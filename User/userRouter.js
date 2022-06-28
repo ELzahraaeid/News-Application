@@ -6,7 +6,7 @@ const axios = require('axios');                                      //make requ
 
 const UserModel = require('./userModel');                            //userModel custom module 
 const {customError, authError} = require('../helpers/CustomError');  //custom errors
-const { authorizeUser } = require('./middlewares');                  // authorization middleware
+const { authorizeUser, validation } = require('./middlewares');                  // authorization middleware
 
 const userRouter = express.Router();                                 //create module/router
 const signAsync = util.promisify(jwt.sign);                          //promisify sign function to create token
@@ -14,18 +14,18 @@ const signAsync = util.promisify(jwt.sign);                          //promisify
 
 
 
-userRouter.post('/signup', async (req, res) => {
+userRouter.post('/signup', validation, async (req, res) => {
 
     const { fullname, email, password } = req.body;
     const checkUserExist = await UserModel.findOne({ email });
-    if(checkUserExist) throw customError(410,'User Already Exist ','User Already Exist')
+    if(checkUserExist) throw customError(410,'User Already Exist ','User Already Exist');
     const saltRounds = parseInt(process.env.SALT_ROUNDS);
     const hashedPassword = await bcrypt.hash(password, saltRounds);
     await UserModel.create({fullname, email, password: hashedPassword});
     res.send({ success: true });
   });
 
-userRouter.post('/login', async (req, res)=> {
+userRouter.post('/login',validation, async (req, res)=> {
     
     const { email, password } = req.body;
     const user = await UserModel.findOne({email});
