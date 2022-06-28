@@ -18,14 +18,10 @@ userRouter.post('/signup', async (req, res) => {
 
     const { fullname, email, password } = req.body;
     const checkUserExist = await UserModel.findOne({ email });
-    checkUserExist? (() => {throw customError(410,'User Already Exist ','User Already Exist')})(): null
+    if(checkUserExist) throw customError(410,'User Already Exist ','User Already Exist')
     const saltRounds = parseInt(process.env.SALT_ROUNDS);
     const hashedPassword = await bcrypt.hash(password, saltRounds);
-    await UserModel.create({
-      fullname: fullname,
-      email: email,
-      password: hashedPassword
-    });
+    await UserModel.create({fullname, email, password: hashedPassword});
     res.send({ success: true });
   });
 
@@ -38,10 +34,9 @@ userRouter.post('/login', async (req, res)=> {
     if(!result)throw authError;
 
     const token = await signAsync({
-      id: user.id,
-      admin: false
+      id: user.id
     }, process.env.SECRET_KEY);
-    res.cookie('token', token, { maxAge: 900000, httpOnly: true }); 
+    res.cookie('token', token, { httpOnly: true }); 
     res.send({success:true});  
 });
 
@@ -50,10 +45,14 @@ userRouter.get(['/','/home'], authorizeUser, async (req, res)=> {
     const id = req.id;
     const user = await UserModel.findById(id);
     const subscribedData = (user.subscriptions).join();
-    const url = `https://newsapi.org/v2/everything?sources=${subscribedData}&apiKey=855514ec0bfc4307bef20b315e03ef4a`;
-    const news = await axios.get(url);
-    const articles = news.data.articles;
-    res.send(articles);
+    if(subscribedData){
+      const url = `https://newsapi.org/v2/everything?sources=${subscribedData}&apiKey=855514ec0bfc4307bef20b315e03ef4a`;
+      const news = await axios.get(url);
+      const articles = news.data.articles;
+      return res.send(articles);
+    }
+    res.send({});
+    
 });
 
 userRouter.get('/sources', authorizeUser, async (req, res)=> {
